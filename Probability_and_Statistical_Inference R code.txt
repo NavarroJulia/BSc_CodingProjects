@@ -1,0 +1,283 @@
+
+#                        -----PSI CW R Code-------
+
+#Task 1: Using R, read the data into a data frame called e.g. Athletes and:
+
+#(a) Produce a table of summary statistics and draw appropriate plots to visually investigate the 
+#relationship between these eleven variables. Comment on your table and plots.
+SportsData<- read.delim("~/Julias stuff/University 2020-2021/PS&I/Term2/Coursework/Sports Data CW 2021.txt")
+summary(SportsData)
+pairs(SportsData[,3:11])
+#plots each of the variables to each other
+#comment on the ones that appear to have strong linear (+ or -) relationships
+
+
+#(b) Draw a histogram and Q-Q plot of Ferr and comment on them. Is the distribution of Ferr
+#close to the normal distribution?
+
+par(mar = c(5, 5,3.1, 2.1), bg = "white", cex = 1.15, cex.lab = 1.25,lwd = 2)
+qqnorm(SportsData$Ferr, ylim=c(-100,300),ylab = "")
+qqline(SportsData$Ferr)
+par(mar = c(5, 5,3.1, 2.1), bg = "white", cex = 1.15, cex.lab = 1.25,lwd = 2)
+#histogram: 
+hist(SportsData$Ferr, main ="")
+#look to follow the line : errors deviate from line - 
+#and histogram does not appear bell shaped.
+
+#Randomly divide the dataset into two sets, training (n1 = 141) and testing (n2 = 61) (see Appendix 1 
+#for explanation how to do this). 
+
+n1<- sample(1:nrow(SportsData), 141,replace=FALSE)
+# randomly divide the Liver dataset into samples of size n1 = 141
+training <- SportsData [n1,]
+# and n2 = 61
+testing<- SportsData [-n1,]
+
+
+#Task2
+#----------(a) 
+#Write down the equation of a regression model with Ferr as the response and other ten
+#variables as predictors.
+#Do this in the report - it should kinda like this:
+
+#TrainingFerr^=B^0+B^1Sport+B^2Sex+B^3LBM+B^4RCC+B^5WCC+B^6Hc+B^7Hg+B^8BMI
+#                 +B^9SSF+B^10Bfat
+
+#Here Sport and Sex are categorical variables and that our y and beta values 
+#are all approximations!
+
+
+#-----------(b) 
+
+#Fit the model in (a), identify insignificant predictors and remove them
+#from the model. Is a full model better than a smaller model? Use appropriate
+#test or score to support your argument.
+
+#Initial Model with 10 explanatory variables:
+
+TrainingModel1<- lm(Ferr~Sport+Sex+LBM+RCC+WCC+Hc+Hg+BMI+SSF+X.Bfat, data = training)
+anova(TrainingModel1)
+
+#From the anova table for the unaltered training data set we can decide to remove
+#variables with a high p-value (significant) and keep the following:
+#Sport,SEx,RCC,BMI
+#Construct a model with only these are the explanatory variables and compare the
+#the two models - which one is a better model - the one with more or less variables?
+
+TrainingModel2<- lm(Ferr~Sport+Sex+RCC+BMI, data = training)
+
+#compare using anova:
+
+anova(TrainingModel1,TrainingModel2)
+#Here we have p=0.1152>0.05 
+#Since the p value is larger than 0.05 there is no evidence to reject H0
+#This means that both models perform similar, however, we keep the one with
+#less variables for less complexity. 
+
+#Keep TrainingModel2<- lm(Ferr~Sport+Sex+RCC+BMI, data = training)
+
+#Alternatively.... Use the AIC or BIC test
+#The lower the value the better the model:
+AIC(TrainingModel1)
+AIC(TrainingModel2)
+BIC(TrainingModel1)
+BIC(TrainingModel2)
+
+#Comment on these in report:
+# AIC(TrainingModel1)
+#[1] 1444.46
+# AIC(TrainingModel2)
+#[1] 1444.099
+# BIC(TrainingModel1)
+#[1] 1503.436
+# BIC(TrainingModel2)
+#[1] 1485.381
+
+#This supports the claim that TrainingModel2 would be 
+#a better model. 
+#However, the anova comparison above actually said both models were similar 
+#but by using the AIC & BIC we confirm that the model with less explanatory
+#variables is better
+
+#-------#c)---------
+#----------i) 
+
+#Check the constant variance, independence and normality assumptions of the 
+#errors for the model in part (b). Do these assumptions hold for your model? If 
+#not, choose an appropriate transformation of the response variable and repeat 
+#steps (a)-(c)(i) for the transformed response variable.
+
+#TrainingModel2<- lm(Ferr~Sport+Sex+RCC+BMI, data = training)
+
+#----------Constant variance for TrainingModel2?---------
+#Note:Residuals=e^hat=y-y^hat - the residuals are estimations of the error
+
+par(mar = c(5, 5,3.1, 2.1), bg = "white", cex = 1.15, cex.lab = 1.25,lwd = 2)
+plot(fitted(TrainingModel2), residuals(TrainingModel2),ylim=c(-150,150), xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, lwd =2, col = 2)
+#Variance does not appear constant, appears to be 'fanning out' - so consider a transformation to the 
+#response variable:
+
+#take log y:
+TrainingModel2_transf = lm(log(Ferr) ~ Sport+Sex+RCC+BMI, data = training)
+#Now check if variance is constant after transformation:
+
+plot(fitted(TrainingModel2_transf), residuals(TrainingModel2_transf),ylim=c(-1.5,1.5), xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, lwd =2, col = 2)
+#Variance appears to now be constant.
+
+
+#------Normality of Errors?-----
+
+par(mar = c(5, 5,3.1, 2.1), bg = "white", cex = 1.15, cex.lab = 1.25,lwd = 2)
+qqnorm(residuals(TrainingModel2_transf), ylab = "Residuals")
+qqline(residuals(TrainingModel2_transf))
+par(mar = c(5, 5,3.1, 2.1), bg = "white", cex = 1.15, cex.lab = 1.25,lwd = 2)
+#histogram: 
+hist(residuals(TrainingModel2_transf), main ="")
+#looks to follow the line 
+
+#let us us the shapiro wilk test to confirm this:
+#Shapiro-Wilk normality test:
+shapiro.test(residuals(TrainingModel2_transf))
+#The null hypothesis is that residuals are normal.
+
+#Since p-value is 0.1089  (at the significance level of 0.05,p-value > 0.05),
+#we do not reject this hypothesis - the residuals are  normally distributed
+
+
+#------Independent or correlated Errors for the model?(Cov(e_i,e_j)=0?-----
+
+# Graphical checks include plots of ˆ against time and ˆi against ˆi+1
+#index plot of residuals. If there was serial correlation, we would see either
+#longer runs of residuals above or below the line for positive correlation or 
+#greater than normal fluctuation for negative correlations. Unless these effects
+#are strong, they can be difficult to spot
+
+
+
+par(mar = c(5, 5,3.1, 2.1), bg = "white", cex = 1.15, cex.lab = 1.25,lwd = 2)
+plot(residuals(TrainingModel2_transf),ylab ="Residuals")
+abline(h = 0)
+
+#(comment in report, refer to graphs)
+
+#plot of successive residuals
+# par(mar = c(5, 5,3.1, 2.1), bg = "white", cex = 1.15, cex.lab = 1.25,lwd = 2)
+residual<-residuals(TrainingModel2)
+plot(residual[-length(residual)],residual[-1], xlab = expression(hat(epsilon)[i]) ,
+     ylab = expression(hat(epsilon)[i+1]))
+abline(h = 0)
+
+# (comment in report)
+
+#cii. Check for outliers, large leverage and influential points. How would you deal with any 
+#possible outliers, large leverage or influential points?
+
+#Any outliers/large leverage and influential points?
+par(mar = c(5, 5,3.1, 2.1), bg = "white", cex = 1.15, cex.lab = 1.25,lwd = 2)
+plot(hatvalues(TrainingModel2_transf),rstandard(TrainingModel2_transf),  xlab = "Leverage",ylab = "Standardized Residual", ylim = c(-3,3), xlim = c(0,0.7))
+abline( h = c(-2,2), lty = 2, col = "grey")
+
+
+abline( v = 2*5/50, lty = 2, col = "red")
+hat.m<- hatvalues(TrainingModel2_transf)
+names.m<- names(hat.m)
+rst<- rstandard(TrainingModel2_transf)
+text(hat.m[hat.m>0.2], rst[hat.m>0.2]-0.15,label =(names.m[hat.m>0.2]))
+text(hat.m[rst>2|rst < -2], rst[rst>2|rst < -2]-0.15,label =(names.m[rst>2|rst < -2]))
+
+#points noted :refer to graph  
+#(how to deal by removing them? checking if data has mistakes eg typo...
+#-> comment in report)
+
+#(d) For the model obtained in part (c), determine which of the significant predictors has the 
+#largest estimated effect on Ferr. Is this effect also the most statistically significant? 
+#  Interpret the effect of significant variables on the Ferr.
+
+#model used:
+#TrainingModel2<- lm(Ferr~Sport+Sex+RCC+Hg, data = training)
+summary(TrainingModel2_transf)
+
+#Significant predictors for Ferr among the sport types, when compared to Basketball, include
+#(screenshot)
+#Comparing the Male gender to the Female gender shows that SexMale has  roughly a 0.56517
+#more effect of Ferr than SexFemale. (ie the male gender is better at predicting the Ferratonin levels)
+
+#Among the other variables, BMI acts as a fairly good predictor.
+#Adjusted R-squared:  0.2703  
+
+
+#TrainingModel2<- lm(Ferr~Sport+Sex+RCC+Hg, data = training)
+
+ #Task 3 prediction:
+newdata=testing
+predict(TrainingModel2, newdata, interval = "prediction")
+
+
+TestingModel<- lm(Ferr~Sport+Sex+RCC+Hg, data = testing)
+
+#plot predicted vs. actual values
+plot(x=predict(TestingModel), Ferr=testing$Ferr,
+     xlab='Predicted Values',
+     ylab='Actual Values',
+     main='Predicted vs. Actual Values')
+
+#add diagonal line for estimated regression line
+abline(a=0, b=1)
+
+
+
+#create matrix of predicted and actual ferr values
+M <- data.frame(actual=testing$Ferr, predicted=predict(TestingModel))
+M
+errors=abs(M[ ,1]-M[ ,2])
+errors
+
+#----------------------------------------------
+
+#Bayesian Part:
+
+
+
+#-----------------Bayesian Section-----------------
+
+#-----------------Bayesian Section-----------------
+#Part b)
+#Prior:
+curve(dnorm(x,12,9), from=0, to=25, ylab="density", ylim=c(0,0.2))
+abline(v=12, lty=2 )
+
+#Likelihood:
+curve(dnorm(x,13.25,4),col = "red", from=0, to=25, ylab="density",add=TRUE, ylim=c(0,0.2))
+abline(v=13.25, lty=2,col='red')
+
+#Posterior:
+curve(dnorm(x,(669/52),72/26), col = "blue", from=0, to=25, ylab="density",add=TRUE, ylim=c(0,0.2))
+abline(v=(669/52), lty=2, col="blue")
+
+legend("topright",legend = c("Prior","Likelihood","Posterior"), col = c("black","red","blue"), lty = c(1,1,1))
+
+#-----------------------
+#Part d)
+#Prior N(12,9)
+
+curve(dnorm(x,12,9),from=10, to=14, ylab="density", ylim=c(0,2))
+abline(v=12, lty=2)
+
+#Likelihood N(11.85,4)
+
+curve(dnorm(x,11.85,4),col ="red", from=10, to=15, ylab="density",add=TRUE, ylim=c(0,0.5))
+abline(v=11.85, lty=2, col="red")
+
+#Posterior N(11.85326087,0.1956521739)
+
+curve(dnorm(x,11.85326087,0.1956521739),col='blue',from=10, to=15, ylab="density",add=TRUE, ylim=c(0,0.3))
+abline(v=11.85326087, lty=2, col='blue')
+
+
+legend("topright",legend = c("Prior","Likelihood","Posterior"), col = c("black","red","blue"), lty = c(1,1,1))
+
+
+
+
